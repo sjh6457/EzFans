@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>EzFans</title>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+        crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+        integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+        crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+
+</head>
+
+<body>
+        <div class="mx-auto" id="mapid" style="width: 800px; height: 600px;">
+        </div>
+    <blockquote class="blockquote text-center">
+        <h1 class="mb-0">Please Fill Out The Form to Reserve Your Tickets and Recieve Transportation Instructions</h1>
+        <p> if your stop does not appear below, click on it (in the map above) to see if there is any capacity remaining. </p>
+    </blockquote>
+    <!-- Here we are creating a form for the users to enter their infformation -->
+    <form id="orderForm">
+        <ul class="list-inline">
+            <li class="list-inline-item">  </li>
+            <li class="list-inline-item">
+          </ul>
+        <div class="mb-3">
+                <h4>Full Name</h4>
+                <input type="name" class="form-control" id="fullname" aria-describedby="emailHelp">
+                <div id="specifications" class="form-text">    Name and Surname</div> 
+        </div>
+        <div class="mb-3">
+            <h4 >Phone Number:</h4>
+            <input type="number" class="form-control" id="Phone Number">
+            <div id="specifications" class="form-text">for identification purposes</div>
+        </div>
+        <div class="mb-3">
+            <h4 >How Many Tickets Would You Like?</h4>
+            <input type="number" class="form-control" id="Ticket Number">
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="Phone Consent">
+          <label class="form-check-label" for="Phone Consent">By checking this box you consent to be contacted with notifications about your order and travel.</label>
+        </div>
+        <select class="form-select" aria-label="Default select example" id="stopSelection">
+        </select>
+        <button class="btn btn-primary" >Submit</button>
+      </form>
+      <blockquote class="blockquote text-center">
+          <h1 class="mb-0" id = "confirmation" ></h1>
+      </blockquote>
+      
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+    
+    <!-- In the beginning of this script we handle retrieving information from the form and posting it, as well as recieving and displaying the response -->
+    <script>
+    var form = document.getElementById("orderForm");
+    function handleForm(event) { 
+        let fullname = document.getElementById("fullname");
+        let walkingPref = document.getElementById("walkingPref")
+        let phonenum = document.getElementById("Phone Number")
+        let stop = document.getElementById("stopSelection")
+        let ticketnumber = document.getElementById("Ticket Number")
+        event.preventDefault();
+        axios.post('http://localhost:3001/order', {
+            name: String(fullname.value),
+            phone: String(phonenum.value),
+            stop: String(stop.value),
+            ticknum: String(ticketnumber.value)
+        })
+        .then(function (response) {
+            let Conf = document.getElementById("confirmation")
+            Conf.innerHTML = response.data
+            console.log(response.data);
+        })
+    } 
+    form.addEventListener('submit', handleForm);
+
+        var mymap = L.map('mapid').setView([48.8476617762732, 2.256660461425781], 12.5);
+
+        // Add base map layer
+        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+            maxZoom: 20,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            id: 'mapbox/streets-v11',
+            tileSize: 512,
+            zoomOffset: -1
+        }).addTo(mymap);
+
+       //this code sends the stops to the dropdown menu
+        var stopslistFeature = []
+        axios.get('http://localhost:3001/stops')
+            .then(function (response) {
+                let availableItems = `<option selected>Please select the stop you prefer if you will not be walking. Otherwise, select "N/A"</option>`
+
+                response.data.forEach(element => {
+                    if (element.name != 'Porte de Saint-Cloud' && element.capacity > 0) {
+                        availableItems += `<option value=${element.id}>${element.name}</option>`
+                }
+                });
+                htmlTag = document.getElementById("stopSelection");
+                htmlTag.innerHTML = availableItems;
+            });
+
+
+
+        // Add all transports on the map
+        var transportsFeature = []
+        axios.get('http://localhost:3001/transports')
+            .then(function (response) {
+                response.data.forEach(element => {
+                    if (element.path !== null) {
+                        var geometry = JSON.parse(element.path)
+                        var feature = {
+                            "type": "Feature",
+                            "properties": {
+                                "name": "transport: " + element.name,
+                            },
+                            "geometry": geometry
+                        };
+                        var mystyle = {   
+                            "color": "#ff7800",
+                            "weight": 5,
+                            "opacity": 0.65
+                         };
+                        transportsFeature.push(feature)
+                        transportLayer = L.geoJSON(feature, {style: mystyle})
+                        transportLayer.addTo(mymap)
+                    }
+                });
+            });
+
+        //adds alll the stops on the map  
+        var stopsFeature = []
+        axios.get('http://localhost:3001/stops')
+            .then(function (response) {
+                response.data.forEach(element => {
+                    if (element.geom !== null) {
+                        var geometry = JSON.parse(element.geom)
+                        geometry.coordinates.reverse()
+                        stopsLayer = L.marker(geometry.coordinates).bindPopup('Stop: <i>' + element.name + '</i><br>Remaining distance on line: <i>' + element.number + ' stops</i>' + '<br> Capacity Remaining: <i>' + element.capacity).openPopup()
+                        stopsLayer.addTo(mymap)
+                    }
+                });
+            })
+        // adds all the gates on the map
+        var gatesFeature = []
+        axios.get('http://localhost:3001/gates')
+            .then(function (response) {
+                response.data.forEach(element => {
+                    if (element.geom !== null) {
+                        var geometry = JSON.parse(element.geom)
+                        geometry.coordinates.reverse()
+                        gatesLayer = L.marker(geometry.coordinates).bindPopup('Gate: <i>' + element.id).openPopup()
+                        gatesLayer.addTo(mymap)
+                    }
+                });
+            })
+
+
+    </script>
+</body>
+</html>
